@@ -33,7 +33,7 @@ app.get("/urls.json", (req, res) => {
 
 // USER DATABASE
 const users = {
-  user1: { id: "user1", email: "user@hotmail.com", password: "tnimi123" },
+  user1: { id: "darsh", email: "darsh@hotmail.com", password: "darshnimi123" },
 };
 
 ///////////////////////////////////////////////////////////
@@ -166,28 +166,23 @@ app.post("/login", (req, res) => {
   console.log(users);
   console.log(req.body);
   console.log(findUserByEmail(req.body.email));
-  //Checking Email
   if (!findUserByEmail(req.body.email)) {
     return res.status(403).send("Invalid email or password");
   }
-
-  //valid userid
   const userId = findUserByEmail(req.body.email).id;
-
-  //Check Password
   if (users[userId].password !== req.body.password) {
     return res.status(403).send("Invalid email or password");
   }
 
-  //sets cookie when user logs in and redirects to /urls
+  //sets cookie 
   res.cookie("user_id", userId);
-  res.redirect("/urls"); //redirects back to the same view
+  res.redirect("/urls");
 });
 
 //deleting cookie when user log out 
 app.post("/logout", (req, res) => {
   res.clearCookie("user_id");
-  res.redirect("/login"); //redirects back to the same view
+  res.redirect("/login");
 });
 
 
