@@ -1,87 +1,199 @@
+////////////////////TINYAPP SERVER FILE/////////////////////
+
+
+//Server file, packages
 const express = require("express");
+const cookieParser = require("cookie-parser");
+
+////////////////////////////////////////////////////////////
+
+//server details
 const app = express();
 const PORT = 8080; // default port 8080
-app.set("view engine", "ejs");
-const cookieParser = require("cookie-parser");
-app.use(cookieParser());
 
-function generateRandomID() {
-  return 1234;
-}
+////////////////////////////////////////////////////////////
 
+app.set("view engine", "ejs");//ejs setup for page
+app.use(express.urlencoded({ extended: true })); //
+app.use(cookieParser()); //cookieParser set to use as encoding for cookies
+
+////////////////////////////////////////////////////////////
+
+// URL DATABASE
 const urlDatabase = {
   "b2xVn2": "http://www.lighthouselabs.ca",
   "9sm5xK": "http://www.google.com"
 };
 
-app.use(express.urlencoded({ extended: true }));
-
-
-app.get("/", (req, res) => {
-  res.send("Hello!");
-});
-
-
-
+//JSON DATAS
+//url database in json format and route for .json urls
 app.get("/urls.json", (req, res) => {
   res.json(urlDatabase);
 });
 
-app.get("/hello", (req, res) => {
-  res.send("<html><body>Hello <b>World</b></body></html>\n");
+// USER DATABASE
+const users = {
+  user1: { id: "user1", email: "user@hotmail.com", password: "tnimi123" },
+};
+
+///////////////////////////////////////////////////////////
+
+// HELPER FUNCTIONS
+const generateRandomString = (database) => {
+  const characters =
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+  let randomString = "";
+  for (let i = 0; i < 6; i++) {
+    randomString += characters[Math.floor(Math.random() * characters.length)];
+  }
+  if (database[randomString]) {
+    generateRandomString(database);
+  }
+
+  return randomString;
+};
+
+////
+const addUrl = (url) => {
+  if (!url.startsWith("http://") && !url.startsWith("https://")) {
+    url = "http://" + url;
+  }
+  return url;
+};
+
+////
+const findUserByEmail = (email) => {
+  for (const user in users) {
+    console.log(user);
+    console.log(user[user]);
+    console.log(email);
+    if (users[user].email === email) {
+      return users[user];
+    }
+  }
+  return null;
+};
+
+//////////////////////URL DATA//////////////////////////////////
+//for home page
+app.get("/", (req, res) => {
+  res.send("Hello!");
 });
 
+//for route to url
 app.get("/urls", (req, res) => {
-  const templateVars = { urls: urlDatabase };
+  const templateVars = { urls: urlDatabase, user: users[req.cookies.user_id] };
   res.render("urls_index", templateVars);
 });
 
-app.get("/urls/new", (req, res) => {
-  const templateVars = { urls: urlDatabase, username: req.cookies["username"] };
-  res.render("urls_new", templateVars);
-});
-
-app.get("/urls/:id", (req, res) => {
-  const templateVars = { id: req.params.id, longURL: "http://www.lighthouselabs.ca", shortURL: req.params.id };
-  res.render("urls_show", templateVars);
-});
-
-
-app.post("/urls", (req, res) => {
-  console.log(req.body); // Log the POST request body to the console
-  const longURL = req.body.longURL;
-  const id = generateRandomID();
-  urlDatabase[id] = longURL;
-  console.log(urlDatabase[id]);
-  res.send("Ok"); // Respond with 'Ok' (we will replace this)
-});
-
-
-app.get("/u/:id", (req, res) => {
-  const id = req.params.id;
-  const longURL = urlDatabase[id];
-  res.redirect(longURL);
-});
-
-// login page - GET
-app.post('/login', (req, res) => {
-  console.log(req.body.username);
-  res.cookie("username", req.body.username).redirect("/urls");
-});
-
-app.get("/urls", (req, res) => {
-  //route to urls ejs flie and return render based on the template vars
-  const templateVars = { urls: urlDatabase, username: req.cookies["username"] };
-  res.render("urls_index", templateVars);
-});
-
-app.post('/logout', (req, res) => {
-  console.log(req.body.username);
-  res.clearCookie("username");
+//deletes from urlDatabase
+app.post("/urls/:id/delete", (req, res) => {
+  delete urlDatabase[req.params.id];
   res.redirect("/urls");
 });
 
+//route to urlsnew
+app.get("/urls/new", (req, res) => {
+  const templateVars = { user: users[req.cookies.user_id] };//before was username getting error!!
+  res.render("urls_new", templateVars);
+});
+app.post("/urls", (req, res) => {
+  const randomString = generateRandomString(urlDatabase);
+  urlDatabase[randomString] = addUrl(req.body.longURL);
+  res.redirect("/urls/${randomString}");
+});
 
+//route to urls show ejs flie
+app.get("/urls/:id", (req, res) => {
+  const templateVars = { id: req.params.id, longURL: urlDatabase[req.params.id], user: users[req.cookies.user_id] };
+  res.render("urls_show", templateVars);
+});
+
+//redirect to longUrl
+app.get("/u/:id", (req, res) => {
+  const id = req.params.id;
+  const longURL = urlDatabase[req.params.id];
+  res.redirect(longURL);
+});
+
+//
+app.post("/urls/:id", (req, res) => {
+  urlDatabase[req.params.id] = addUrl(req.body.longURL);
+  res.redirect("/urls/${req.params.id}"); //redirects back to the same view
+});
+
+
+////////////////////////////////////////////////////////////////////
+//time for register 
+
+app.get("/register", (req, res) => {
+  const templateVars = { user: users[req.cookies.user_id] };
+  res.render("user_registration", templateVars);
+});
+
+//saving user setting 
+app.post("/register", (req, res) => {
+  if (!req.body.email || !req.body.password) {
+    console.log("Incomplete Form");
+    return res.status(400).send("Email and password are required.");
+  }
+  //Check if user avaliable already
+  if (findUserByEmail(req.body.email) !== null) {
+    return res.status(400).send("Email already exists.");
+  }
+  //if not then create new user
+  const userId = "user" + generateRandomString(users);
+  users[userId] = {
+    id: userId,
+    email: req.body.email,
+    password: req.body.password,
+  };
+
+  //redirecting to url and setting cookie
+  res.cookie("user_id", userId);
+  console.log("User Database", users);
+  res.redirect("/urls");
+});
+
+////////////////////////Now time to login///////////////////////
+
+app.get("/login", (req, res) => {
+  const templateVars = { user: users[req.cookies.user_id] };
+  res.render("user_login", templateVars);
+});
+
+app.post("/login", (req, res) => {
+  console.log(users);
+  console.log(req.body);
+  console.log(findUserByEmail(req.body.email));
+  //Checking Email
+  if (!findUserByEmail(req.body.email)) {
+    return res.status(403).send("Invalid email or password");
+  }
+
+  //valid userid
+  const userId = findUserByEmail(req.body.email).id;
+
+  //Check Password
+  if (users[userId].password !== req.body.password) {
+    return res.status(403).send("Invalid email or password");
+  }
+
+  //sets cookie when user logs in and redirects to /urls
+  res.cookie("user_id", userId);
+  res.redirect("/urls"); //redirects back to the same view
+});
+
+//deleting cookie when user log out 
+app.post("/logout", (req, res) => {
+  res.clearCookie("user_id");
+  res.redirect("/login"); //redirects back to the same view
+});
+
+
+///////////////////////////////////////////////////////////
+
+// server can listen us:)
 
 app.listen(PORT, () => {
   console.log(`Example app listening on port ${PORT}!`);
