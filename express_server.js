@@ -54,14 +54,6 @@ const generateRandomString = (database) => {
 };
 
 ////
-const addUrl = (url) => {
-  if (!url.startsWith("http://") && !url.startsWith("https://")) {
-    url = "http://" + url;
-  }
-  return url;
-};
-
-////
 const findUserByEmail = (email) => {
   for (const user in users) {
     console.log(user);
@@ -74,22 +66,26 @@ const findUserByEmail = (email) => {
   return null;
 };
 
+////
+const addUrl = (url) => {
+  if (!url.startsWith("http://") && !url.startsWith("https://")) {
+    url = "http://" + url;
+  }
+  return url;
+};
+
+
+
 //////////////////////URL DATA//////////////////////////////////
 //for home page
 app.get("/", (req, res) => {
-  res.send("Hello!");
+  res.send("Hello!");//checking that is working or not 
 });
 
 //for route to url
 app.get("/urls", (req, res) => {
   const templateVars = { urls: urlDatabase, user: users[req.cookies.user_id] };
   res.render("urls_index", templateVars);
-});
-
-//deletes from urlDatabase
-app.post("/urls/:id/delete", (req, res) => {
-  delete urlDatabase[req.params.id];
-  res.redirect("/urls");
 });
 
 //route to urlsnew
@@ -101,6 +97,12 @@ app.post("/urls", (req, res) => {
   const randomString = generateRandomString(urlDatabase);
   urlDatabase[randomString] = addUrl(req.body.longURL);
   res.redirect("/urls/${randomString}");
+});
+
+//deletes from urlDatabase
+app.post("/urls/:id/delete", (req, res) => {
+  delete urlDatabase[req.params.id];
+  res.redirect("/urls");
 });
 
 //route to urls show ejs flie
@@ -139,7 +141,7 @@ app.post("/register", (req, res) => {
   }
   //Check if user avaliable already
   if (findUserByEmail(req.body.email) !== null) {
-    return res.status(400).send("Email already exists.");
+    return res.status(400).send("Already exists.");
   }
   //if not then create new user
   const userId = "user" + generateRandomString(users);
