@@ -194,5 +194,5 @@ app.post("/register", (req, res) => {
 
 // server listen
 app.listen(PORT, () => {
-  console.log("App listening us on port ${PORT}");
+  console.log(`App listening us on port ${PORT}`);
 });
